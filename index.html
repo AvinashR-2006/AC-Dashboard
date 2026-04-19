@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remote AC Dashboard</title>
+  <style>
+    :root {
+      --bg: linear-gradient(180deg, #f5f9fc 0%, #ffffff 100%);
+      --card: #ffffff;
+      --text: #17324d;
+      --muted: #67819a;
+      --border: rgba(23, 50, 77, 0.1);
+      --blue: #0f7acb;
+      --green: #1e9f6e;
+      --red: #d9534f;
+      --shadow: 0 20px 50px rgba(36, 68, 103, 0.11);
+      --radius: 22px;
+      --font: "Segoe UI", "Trebuchet MS", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      padding: 18px;
+    }
+
+    .shell {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .hero,
+    .panel,
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px;
+    }
+
+    h1, h2, p { margin-top: 0; }
+    h1 { font-size: clamp(2rem, 5vw, 3rem); margin-bottom: 10px; }
+    p { color: var(--muted); line-height: 1.55; }
+
+    .grid,
+    .cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .grid > *,
+    .cards > * {
+      flex: 1 1 250px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #edf5fb;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--red);
+    }
+
+    .dot.good { background: var(--green); }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 13px 15px;
+      font: inherit;
+      color: var(--text);
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 13px 20px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .primary { background: linear-gradient(135deg, var(--blue), #085f9f); color: white; }
+    .soft { background: #e9f3fb; color: var(--text); }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 16px;
+      align-items: center;
+    }
+
+    .value {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin: 8px 0;
+    }
+
+    .on { color: var(--green); }
+    .off { color: var(--red); }
+
+    .switch {
+      position: relative;
+      width: 72px;
+      height: 38px;
+      display: inline-block;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: #d8e4ef;
+      cursor: pointer;
+    }
+
+    .slider::before {
+      content: "";
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      left: 4px;
+      top: 4px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 8px 18px rgba(17, 24, 39, 0.18);
+      transition: 180ms ease;
+    }
+
+    .switch input:checked + .slider { background: linear-gradient(135deg, var(--green), #167a54); }
+    .switch input:checked + .slider::before { transform: translateX(34px); }
+
+    .feedback { min-height: 24px; font-weight: 700; color: var(--muted); }
+    .feedback.ok { color: var(--green); }
+    .feedback.bad { color: var(--red); }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="badge"><span class="dot" id="brokerDot"></span><span id="brokerLabel">Broker disconnected</span></div>
+      <h1>Remote AC Dashboard</h1>
+      <p>Connect to HiveMQ over WebSockets and control the ESP32 AC controller from anywhere with internet access.</p>
+    </section>
+
+    <section class="panel">
+      <h2>HiveMQ Connection</h2>
+      <div class="grid">
+        <div>
+          <label for="wsUrl">WebSocket Broker URL</label>
+          <input id="wsUrl" type="text" placeholder="wss://your-cluster.s1.eu.hivemq.cloud:8884/mqtt">
+        </div>
+        <div>
+          <label for="baseTopic">Base Topic</label>
+          <input id="baseTopic" type="text" value="home/ac1">
+        </div>
+        <div>
+          <label for="mqttUser">MQTT Username</label>
+          <input id="mqttUser" type="text">
+        </div>
+        <div>
+          <label for="mqttPass">MQTT Password</label>
+          <input id="mqttPass" type="password">
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="connectButton" type="button">Connect Broker</button>
+        <button class="soft" id="statusButton" type="button">Request Status</button>
+      </div>
+      <p class="feedback" id="brokerFeedback">Use your HiveMQ WebSocket endpoint, usually port 8884 with `/mqtt`.</p>
+    </section>
+
+    <section class="cards">
+      <article class="card">
+        <h2>Power</h2>
+        <div class="value off" id="powerValue">OFF</div>
+        <label class="switch" for="powerToggle">
+          <input id="powerToggle" type="checkbox">
+          <span class="slider"></span>
+        </label>
+      </article>
+
+      <article class="card">
+        <h2>Compressor</h2>
+        <div class="value off" id="compressorValue">OFF</div>
+        <label class="switch" for="compressorToggle">
+          <input id="compressorToggle" type="checkbox">
+          <span class="slider"></span>
+        </label>
+      </article>
+
+      <article class="card">
+        <h2>Fan Speed</h2>
+        <div class="value" id="fanValue">0%</div>
+        <input id="fanSpeed" type="range" min="0" max="100" value="0">
+        <div class="actions">
+          <button class="primary" id="fanButton" type="button">Publish Fan Speed</button>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>DHT22 Humidity</h2>
+        <div class="value" id="humidityValue">--.-%</div>
+        <p>Ambient humidity published by the ESP32.</p>
+      </article>
+
+      <article class="card">
+        <h2>Timer</h2>
+        <div class="grid">
+          <div>
+            <label for="onTime">ON Time</label>
+            <input id="onTime" type="time">
+          </div>
+          <div>
+            <label for="offTime">OFF Time</label>
+            <input id="offTime" type="time">
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary" id="timerButton" type="button">Publish Timer</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <h2>Live Temperatures</h2>
+      <div class="grid" id="temperatureGrid"></div>
+      <p class="feedback" id="controlFeedback"></p>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script>
+    (function () {
+      const storageKey = "remote-ac-dashboard";
+      const wsUrl = document.getElementById("wsUrl");
+      const baseTopic = document.getElementById("baseTopic");
+      const mqttUser = document.getElementById("mqttUser");
+      const mqttPass = document.getElementById("mqttPass");
+      const brokerDot = document.getElementById("brokerDot");
+      const brokerLabel = document.getElementById("brokerLabel");
+      const brokerFeedback = document.getElementById("brokerFeedback");
+      const powerValue = document.getElementById("powerValue");
+      const compressorValue = document.getElementById("compressorValue");
+      const fanValue = document.getElementById("fanValue");
+      const humidityValue = document.getElementById("humidityValue");
+      const powerToggle = document.getElementById("powerToggle");
+      const compressorToggle = document.getElementById("compressorToggle");
+      const fanSpeed = document.getElementById("fanSpeed");
+      const fanButton = document.getElementById("fanButton");
+      const timerButton = document.getElementById("timerButton");
+      const statusButton = document.getElementById("statusButton");
+      const connectButton = document.getElementById("connectButton");
+      const onTime = document.getElementById("onTime");
+      const offTime = document.getElementById("offTime");
+      const temperatureGrid = document.getElementById("temperatureGrid");
+      const controlFeedback = document.getElementById("controlFeedback");
+
+      let client = null;
+      let suppress = false;
+
+      function saveSettings() {
+        localStorage.setItem(storageKey, JSON.stringify({
+          wsUrl: wsUrl.value.trim(),
+          baseTopic: baseTopic.value.trim(),
+          mqttUser: mqttUser.value.trim(),
+          mqttPass: mqttPass.value
+        }));
+      }
+
+      function loadSettings() {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        wsUrl.value = saved.wsUrl || "";
+        baseTopic.value = saved.baseTopic || "home/ac1";
+        mqttUser.value = saved.mqttUser || "";
+        mqttPass.value = saved.mqttPass || "";
+      }
+
+      function topic(suffix) {
+        return (baseTopic.value.trim() || "home/ac1").replace(/\/+$/, "") + "/" + suffix;
+      }
+
+      function setBrokerState(connected, message) {
+        brokerDot.className = "dot" + (connected ? " good" : "");
+        brokerLabel.textContent = connected ? "Broker connected" : "Broker disconnected";
+        brokerFeedback.textContent = message || "";
+        brokerFeedback.className = "feedback " + (connected ? "ok" : "bad");
+      }
+
+      function setValue(el, value) {
+        const on = Boolean(value);
+        el.textContent = on ? "ON" : "OFF";
+        el.className = "value " + (on ? "on" : "off");
+      }
+
+      function publishControl() {
+        if (!client || !client.connected) return;
+        client.publish(topic("control"), JSON.stringify({
+          power_on: powerToggle.checked,
+          compressor_on: compressorToggle.checked
+        }));
+      }
+
+      function updateStatus(data) {
+        suppress = true;
+        powerToggle.checked = Boolean(data.power_on);
+        compressorToggle.checked = Boolean(data.compressor_on);
+        fanSpeed.value = Number(data.fan_speed_percent || 0);
+        suppress = false;
+
+        setValue(powerValue, data.power_on);
+        setValue(compressorValue, data.compressor_on);
+        fanValue.textContent = Number(data.fan_speed_percent || 0) + "%";
+        humidityValue.textContent = typeof data.dht_humidity === "number" ? data.dht_humidity.toFixed(1) + "%" : "--.-%";
+
+        if (data.on_time) onTime.value = data.on_time;
+        if (data.off_time) offTime.value = data.off_time;
+
+        const temps = Array.isArray(data.temperatures) ? data.temperatures : [];
+        const names = ["Thermostat 1", "Thermostat 2", "Thermostat 3", "Thermostat 4", "DHT22 Ambient"];
+        temperatureGrid.innerHTML = names.map(function (name, index) {
+          const value = typeof temps[index] === "number" ? temps[index].toFixed(1) + " C" : "--.- C";
+          const extra = index === 4 && typeof data.dht_humidity === "number" ? "Humidity: " + data.dht_humidity.toFixed(1) + "%" : "";
+          return "<article class=\"card\"><h2>" + name + "</h2><div class=\"value\">" + value + "</div><p>" + extra + "</p></article>";
+        }).join("");
+      }
+
+      connectButton.addEventListener("click", function () {
+        saveSettings();
+        if (client) client.end(true);
+
+        client = mqtt.connect(wsUrl.value.trim(), {
+          username: mqttUser.value.trim(),
+          password: mqttPass.value,
+          clean: true,
+          connectTimeout: 10000,
+          reconnectPeriod: 3000,
+          clientId: "remote_ac_" + Math.random().toString(16).slice(2, 10)
+        });
+
+        setBrokerState(false, "Connecting...");
+
+        client.on("connect", function () {
+          setBrokerState(true, "Connected. Waiting for AC controller status.");
+          client.subscribe(topic("status"));
+          client.subscribe(topic("availability"));
+          client.publish(topic("status/get"), JSON.stringify({ request: "status" }));
+        });
+
+        client.on("message", function (receivedTopic, payload) {
+          const text = payload.toString();
+          if (receivedTopic === topic("availability")) {
+            controlFeedback.textContent = "Controller availability: " + text;
+            return;
+          }
+          if (receivedTopic === topic("status")) {
+            updateStatus(JSON.parse(text));
+          }
+        });
+
+        client.on("error", function (error) {
+          setBrokerState(false, error.message || "MQTT error");
+        });
+      });
+
+      statusButton.addEventListener("click", function () {
+        if (client && client.connected) client.publish(topic("status/get"), JSON.stringify({ request: "status" }));
+      });
+
+      powerToggle.addEventListener("change", function () {
+        if (!suppress) publishControl();
+      });
+
+      compressorToggle.addEventListener("change", function () {
+        if (!suppress) publishControl();
+      });
+
+      fanSpeed.addEventListener("input", function () {
+        fanValue.textContent = fanSpeed.value + "%";
+      });
+
+      fanButton.addEventListener("click", function () {
+        if (client && client.connected) client.publish(topic("fan/set"), JSON.stringify({ fan_speed_percent: Number(fanSpeed.value) }));
+      });
+
+      timerButton.addEventListener("click", function () {
+        if (client && client.connected) client.publish(topic("timer/set"), JSON.stringify({ on_time: onTime.value, off_time: offTime.value }));
+      });
+
+      loadSettings();
+    })();
+  </script>
+</body>
+</html>

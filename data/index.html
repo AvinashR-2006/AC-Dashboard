@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AC Control Dashboard</title>
+  <style>
+    :root {
+      --bg: linear-gradient(180deg, #f4f8fb 0%, #fbfdff 48%, #ffffff 100%);
+      --surface: rgba(255, 255, 255, 0.96);
+      --surface-soft: #f7fafc;
+      --text: #17324d;
+      --muted: #67819a;
+      --border: rgba(23, 50, 77, 0.1);
+      --shadow: 0 20px 50px rgba(36, 68, 103, 0.11);
+      --primary: #0f7acb;
+      --primary-strong: #085f9f;
+      --success: #1e9f6e;
+      --danger: #d9534f;
+      --warning: #d99927;
+      --track: #d8e4ef;
+      --ring: rgba(15, 122, 203, 0.18);
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --radius-sm: 14px;
+      --font: "Segoe UI", "Trebuchet MS", sans-serif;
+      --transition: 180ms ease;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background: var(--bg);
+      padding: 18px 14px 34px;
+    }
+
+    .app {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .hero,
+    .panel,
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+    }
+
+    .hero,
+    .panel-body,
+    .card {
+      padding: 22px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top right, rgba(15, 122, 203, 0.12), transparent 34%),
+        radial-gradient(circle at bottom left, rgba(30, 159, 110, 0.1), transparent 30%),
+        var(--surface);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: #f3f8fd;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--warning);
+      box-shadow: 0 0 0 0 rgba(217, 153, 39, 0.35);
+      animation: pulse 1.6s infinite;
+    }
+
+    .dot.good { background: var(--success); }
+    .dot.bad {
+      background: var(--danger);
+      animation: none;
+      box-shadow: none;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      margin-bottom: 10px;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+    }
+
+    p {
+      color: var(--muted);
+      line-height: 1.55;
+      margin-bottom: 0;
+    }
+
+    .hero-grid,
+    .cards,
+    .settings-grid,
+    .metrics-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .hero-grid > *,
+    .cards > *,
+    .settings-grid > *,
+    .metrics-grid > * {
+      flex: 1 1 260px;
+    }
+
+    .hero-stat {
+      background: var(--surface-soft);
+      border: 1px solid rgba(23, 50, 77, 0.08);
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+
+    .eyebrow {
+      display: block;
+      font-size: 0.74rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .hero-value,
+    .big-value {
+      font-size: clamp(1.7rem, 4vw, 2.4rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--text);
+    }
+
+    .big-value.on { color: var(--success); }
+    .big-value.off { color: var(--danger); }
+
+    .panel-body {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .section-head p {
+      max-width: 48rem;
+    }
+
+    .card {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 250, 252, 0.94));
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 0.94rem;
+      font-weight: 700;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 13px 15px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(23, 50, 77, 0.12);
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px var(--ring);
+      transform: translateY(-1px);
+    }
+
+    .btn-row,
+    .toggle-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 13px 20px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .btn:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.72; cursor: wait; }
+
+    .btn-primary {
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+      box-shadow: 0 14px 28px rgba(15, 122, 203, 0.22);
+    }
+
+    .btn-soft {
+      background: #e9f3fb;
+      color: var(--text);
+    }
+
+    .switch {
+      position: relative;
+      width: 72px;
+      height: 38px;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: var(--track);
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+
+    .slider::before {
+      content: "";
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      left: 4px;
+      top: 4px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 8px 18px rgba(17, 24, 39, 0.18);
+      transition: transform var(--transition);
+    }
+
+    .switch input:checked + .slider {
+      background: linear-gradient(135deg, var(--success), #167a54);
+    }
+
+    .switch input:checked + .slider::before {
+      transform: translateX(34px);
+    }
+
+    .slider-box {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 12px;
+    }
+
+    input[type="range"] {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .range-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .temp-card {
+      min-height: 145px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .temp-name {
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .temp-reading {
+      font-size: clamp(1.8rem, 5vw, 2.5rem);
+      font-weight: 800;
+      letter-spacing: -0.05em;
+    }
+
+    .temp-reading.na { color: var(--warning); }
+
+    .feedback {
+      min-height: 24px;
+      font-weight: 700;
+    }
+
+    .feedback.success { color: var(--success); }
+    .feedback.error { color: var(--danger); }
+
+    .inline-note {
+      padding: 14px 16px;
+      border-radius: var(--radius-md);
+      background: #f5f9fc;
+      border: 1px solid rgba(23, 50, 77, 0.08);
+      color: var(--muted);
+    }
+
+    .hidden { display: none !important; }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(217, 153, 39, 0.35); }
+      70% { box-shadow: 0 0 0 10px rgba(217, 153, 39, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(217, 153, 39, 0); }
+    }
+
+    @media (min-width: 820px) {
+      body { padding: 24px 20px 42px; }
+      .hero, .panel-body, .card { padding: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <div class="status-pill"><span class="dot" id="statusDot"></span><span id="statusHeadline">Connecting to AC controller...</span></div>
+      <h1>AC Control Dashboard</h1>
+      <p>Scan the device QR code and land directly here. The panel shows all five temperature readings, lets you switch main power and compressor independently, and adjusts blower speed from your ESP32 in real time.</p>
+
+      <div class="hero-grid" style="margin-top:18px;">
+        <div class="hero-stat">
+          <span class="eyebrow">Main Power</span>
+          <div class="big-value off" id="powerValue">OFF</div>
+          <p id="powerHelper">System power is currently off.</p>
+        </div>
+        <div class="hero-stat">
+          <span class="eyebrow">Compressor</span>
+          <div class="big-value off" id="compressorValue">OFF</div>
+          <p id="compressorHelper">Compressor is idle.</p>
+        </div>
+        <div class="hero-stat">
+          <span class="eyebrow">Fan Speed</span>
+          <div class="hero-value" id="fanValue">0%</div>
+          <p id="fanHelper">PWM output is at minimum.</p>
+        </div>
+        <div class="hero-stat">
+          <span class="eyebrow">DHT22 Humidity</span>
+          <div class="hero-value" id="humidityValue">--.-%</div>
+          <p>Ambient humidity from the DHT22 sensor.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-body">
+        <div class="section-head">
+          <div>
+            <h2>Live Temperature Monitoring</h2>
+            <p>Four thermostat probe values and one DHT22 ambient reading are refreshed from the ESP32 and shown below.</p>
+          </div>
+          <div class="inline-note" id="ipNote">Device IP: waiting...</div>
+        </div>
+
+        <div class="metrics-grid">
+          <article class="card temp-card">
+            <div>
+              <div class="temp-name">Thermostat 1</div>
+              <div class="temp-reading" id="temp0">--.-&deg;C</div>
+            </div>
+            <p id="temp0Meta">Primary coil probe</p>
+          </article>
+          <article class="card temp-card">
+            <div>
+              <div class="temp-name">Thermostat 2</div>
+              <div class="temp-reading" id="temp1">--.-&deg;C</div>
+            </div>
+            <p id="temp1Meta">Secondary coil probe</p>
+          </article>
+          <article class="card temp-card">
+            <div>
+              <div class="temp-name">Thermostat 3</div>
+              <div class="temp-reading" id="temp2">--.-&deg;C</div>
+            </div>
+            <p id="temp2Meta">Return air probe</p>
+          </article>
+          <article class="card temp-card">
+            <div>
+              <div class="temp-name">Thermostat 4</div>
+              <div class="temp-reading" id="temp3">--.-&deg;C</div>
+            </div>
+            <p id="temp3Meta">Discharge probe</p>
+          </article>
+          <article class="card temp-card">
+            <div>
+              <div class="temp-name">DHT22 Ambient</div>
+              <div class="temp-reading" id="temp4">--.-&deg;C</div>
+            </div>
+            <p id="temp4Meta">Humidity: --.-%</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="cards">
+      <article class="card">
+        <span class="eyebrow">AC Controls</span>
+        <h2>Power and Compressor</h2>
+        <p>Power and compressor are exposed separately so you can isolate service checks or stage compressor demand manually.</p>
+
+        <div class="toggle-row" style="margin-top:18px;">
+          <div>
+            <strong>Main Power</strong>
+            <p id="powerToggleText">Power relay is OFF.</p>
+          </div>
+          <label class="switch" for="powerToggle">
+            <input id="powerToggle" type="checkbox">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row" style="margin-top:16px;">
+          <div>
+            <strong>Compressor</strong>
+            <p id="compressorToggleText">Compressor relay is OFF.</p>
+          </div>
+          <label class="switch" for="compressorToggle">
+            <input id="compressorToggle" type="checkbox">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="feedback" id="controlFeedback"></div>
+      </article>
+
+      <article class="card">
+        <span class="eyebrow">Blower</span>
+        <h2>Fan Speed PWM</h2>
+        <p>Adjust motor speed from `0` to `100%`. The ESP32 converts this to PWM duty for the configured fan pin.</p>
+
+        <div class="slider-box">
+          <input id="fanSpeed" type="range" min="0" max="100" step="1" value="0">
+          <div class="range-meta">
+            <span>Low</span>
+            <strong id="fanSliderValue">0%</strong>
+            <span>High</span>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="fanApplyButton" type="button">Apply Fan Speed</button>
+          </div>
+        </div>
+
+        <div class="feedback" id="fanFeedback"></div>
+      </article>
+
+      <article class="card">
+        <span class="eyebrow">Timer</span>
+        <h2>Edge-Triggered Schedule</h2>
+        <p>The device fires only at the exact ON and OFF minute, then leaves manual control untouched between those edges.</p>
+
+        <div class="settings-grid" style="margin-top:16px;">
+          <div class="field">
+            <label for="onTime">Power ON Time</label>
+            <input id="onTime" type="time">
+          </div>
+          <div class="field">
+            <label for="offTime">Power OFF Time</label>
+            <input id="offTime" type="time">
+          </div>
+        </div>
+
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn btn-primary" id="timerButton" type="button">Save Timer</button>
+        </div>
+
+        <div class="feedback" id="timerFeedback"></div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-body">
+        <div class="section-head">
+          <div>
+            <h2>Wi-Fi Provisioning</h2>
+            <p>There is no separate login or setup page. Configure Wi-Fi and HiveMQ/MQTT here, then the ESP32 will publish live data for remote access.</p>
+          </div>
+          <div class="inline-note" id="wifiStateNote">Wi-Fi state: checking...</div>
+        </div>
+
+        <div id="wifiSetupCard">
+          <div class="settings-grid">
+            <div class="field">
+              <label for="ssid">Wi-Fi SSID</label>
+              <input id="ssid" type="text" placeholder="Enter Wi-Fi name" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="wifiPassword">Wi-Fi Password</label>
+              <input id="wifiPassword" type="password" placeholder="Enter Wi-Fi password">
+            </div>
+            <div class="field">
+              <label for="brokerUrl">MQTT Broker URL</label>
+              <input id="brokerUrl" type="text" placeholder="mqtts://your-cluster.s1.eu.hivemq.cloud" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="brokerPort">MQTT Port</label>
+              <input id="brokerPort" type="number" min="1" max="65535" value="8883">
+            </div>
+            <div class="field">
+              <label for="mqttTopic">Base Topic</label>
+              <input id="mqttTopic" type="text" value="home/ac1" placeholder="home/ac1" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="mqttUser">MQTT Username</label>
+              <input id="mqttUser" type="text" placeholder="HiveMQ username" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="mqttPass">MQTT Password</label>
+              <input id="mqttPass" type="password" placeholder="HiveMQ password">
+            </div>
+            <div class="field">
+              <label for="remoteUrl">Hosted Dashboard URL</label>
+              <input id="remoteUrl" type="url" placeholder="https://yourname.github.io/ac-dashboard/" autocomplete="off">
+            </div>
+          </div>
+
+          <div class="btn-row" style="margin-top:16px;">
+            <button class="btn btn-primary" id="wifiSaveButton" type="button">Save Wi-Fi</button>
+            <button class="btn btn-soft" id="wifiConnectButton" type="button">Connect Device</button>
+          </div>
+          <div class="feedback" id="wifiFeedback"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const tempEls = Array.from({ length: 5 }, (_, index) => document.getElementById("temp" + index));
+      const tempMetaEls = Array.from({ length: 5 }, (_, index) => document.getElementById("temp" + index + "Meta"));
+      const statusDot = document.getElementById("statusDot");
+      const statusHeadline = document.getElementById("statusHeadline");
+      const ipNote = document.getElementById("ipNote");
+      const wifiStateNote = document.getElementById("wifiStateNote");
+      const wifiSetupCard = document.getElementById("wifiSetupCard");
+      const powerValue = document.getElementById("powerValue");
+      const compressorValue = document.getElementById("compressorValue");
+      const fanValue = document.getElementById("fanValue");
+      const humidityValue = document.getElementById("humidityValue");
+      const powerHelper = document.getElementById("powerHelper");
+      const compressorHelper = document.getElementById("compressorHelper");
+      const fanHelper = document.getElementById("fanHelper");
+      const powerToggle = document.getElementById("powerToggle");
+      const compressorToggle = document.getElementById("compressorToggle");
+      const powerToggleText = document.getElementById("powerToggleText");
+      const compressorToggleText = document.getElementById("compressorToggleText");
+      const fanSpeed = document.getElementById("fanSpeed");
+      const fanSliderValue = document.getElementById("fanSliderValue");
+      const onTime = document.getElementById("onTime");
+      const offTime = document.getElementById("offTime");
+      const ssid = document.getElementById("ssid");
+      const wifiPassword = document.getElementById("wifiPassword");
+      const brokerUrl = document.getElementById("brokerUrl");
+      const brokerPort = document.getElementById("brokerPort");
+      const mqttTopic = document.getElementById("mqttTopic");
+      const mqttUser = document.getElementById("mqttUser");
+      const mqttPass = document.getElementById("mqttPass");
+      const remoteUrl = document.getElementById("remoteUrl");
+      const controlFeedback = document.getElementById("controlFeedback");
+      const fanFeedback = document.getElementById("fanFeedback");
+      const timerFeedback = document.getElementById("timerFeedback");
+      const wifiFeedback = document.getElementById("wifiFeedback");
+      const fanApplyButton = document.getElementById("fanApplyButton");
+      const timerButton = document.getElementById("timerButton");
+      const wifiSaveButton = document.getElementById("wifiSaveButton");
+      const wifiConnectButton = document.getElementById("wifiConnectButton");
+
+      let pollingHandle = null;
+      let updatingControls = false;
+
+      function setFeedback(target, message, type) {
+        target.textContent = message || "";
+        target.className = "feedback" + (type ? " " + type : "");
+      }
+
+      function setButtonDisabled(button, disabled) {
+        button.disabled = disabled;
+      }
+
+      function tempText(value) {
+        return typeof value === "number" && Number.isFinite(value) ? value.toFixed(1) + "\u00B0C" : "--.-\u00B0C";
+      }
+
+      function setConnection(connected, text) {
+        statusDot.className = "dot " + (connected ? "good" : "bad");
+        statusHeadline.textContent = text;
+      }
+
+      function setToggleState(el, on) {
+        el.checked = Boolean(on);
+      }
+
+      function updateBooleanCard(target, helper, isOn, onLabel, offLabel) {
+        target.textContent = isOn ? "ON" : "OFF";
+        target.className = "big-value " + (isOn ? "on" : "off");
+        helper.textContent = isOn ? onLabel : offLabel;
+      }
+
+      function updateDashboard(data) {
+        updatingControls = true;
+
+        updateBooleanCard(powerValue, powerHelper, data.power_on, "System power is active.", "System power is currently off.");
+        updateBooleanCard(compressorValue, compressorHelper, data.compressor_on, "Compressor relay is active.", "Compressor is idle.");
+
+        setToggleState(powerToggle, data.power_on);
+        setToggleState(compressorToggle, data.compressor_on);
+        powerToggleText.textContent = data.power_on ? "Power relay is ON." : "Power relay is OFF.";
+        compressorToggleText.textContent = data.compressor_on ? "Compressor relay is ON." : "Compressor relay is OFF.";
+
+        const fanPercent = Number(data.fan_speed_percent || 0);
+        fanValue.textContent = fanPercent + "%";
+        fanSliderValue.textContent = fanPercent + "%";
+        fanHelper.textContent = "PWM output is running at " + fanPercent + "%.";
+        fanSpeed.value = fanPercent;
+        humidityValue.textContent = typeof data.dht_humidity === "number" ? data.dht_humidity.toFixed(1) + "%" : "--.-%";
+
+        const names = [
+          "Primary coil probe",
+          "Secondary coil probe",
+          "Return air probe",
+          "Discharge probe",
+          "Humidity: " + (typeof data.dht_humidity === "number" ? data.dht_humidity.toFixed(1) + "%" : "--.-%")
+        ];
+
+        const values = Array.isArray(data.temperatures) ? data.temperatures : [];
+        tempEls.forEach(function (el, index) {
+          const value = values[index];
+          el.innerHTML = tempText(value).replace("\u00B0", "&deg;");
+          el.className = "temp-reading" + (typeof value === "number" && Number.isFinite(value) ? "" : " na");
+          tempMetaEls[index].textContent = names[index];
+        });
+
+        ipNote.textContent = "Device IP: " + (data.ip || "192.168.4.1");
+        wifiStateNote.textContent = "Wi-Fi: " + (data.wifi_connected ? "Connected" : "Setup / disconnected") + " | MQTT: " + (data.mqtt_connected ? "Connected" : "Not connected");
+        wifiSetupCard.classList.toggle("hidden", Boolean(data.wifi_saved && data.wifi_connected && data.mqtt_connected));
+
+        if (typeof data.on_time === "string" && data.on_time) onTime.value = data.on_time;
+        if (typeof data.off_time === "string" && data.off_time) offTime.value = data.off_time;
+        if (typeof data.remote_url === "string" && data.remote_url && !remoteUrl.value) remoteUrl.value = data.remote_url;
+
+        updatingControls = false;
+      }
+
+      async function requestJson(url, options) {
+        const response = await fetch(url, {
+          headers: { "Content-Type": "application/json" },
+          ...options
+        });
+
+        const contentType = response.headers.get("content-type") || "";
+        const body = contentType.includes("application/json") ? await response.json() : null;
+
+        if (!response.ok) {
+          throw new Error((body && body.error) || ("Request failed: " + response.status));
+        }
+
+        return body;
+      }
+
+      async function fetchStatus() {
+        try {
+          const data = await requestJson("/status", { method: "GET" });
+          setConnection(true, data.wifi_connected ? "AC controller online" : "Controller in setup mode");
+          updateDashboard(data);
+        } catch (error) {
+          setConnection(false, "Unable to reach controller");
+          setFeedback(controlFeedback, "Status polling failed. Stay connected to the controller hotspot or local Wi-Fi.", "error");
+        }
+      }
+
+      function startPolling() {
+        if (pollingHandle) window.clearInterval(pollingHandle);
+        fetchStatus();
+        pollingHandle = window.setInterval(fetchStatus, 2500);
+      }
+
+      async function postJson(url, payload, feedbackEl, successMessage) {
+        try {
+          const data = await requestJson(url, {
+            method: "POST",
+            body: JSON.stringify(payload)
+          });
+          if (successMessage) setFeedback(feedbackEl, successMessage, "success");
+          await fetchStatus();
+          return data;
+        } catch (error) {
+          setFeedback(feedbackEl, error.message || "Request failed.", "error");
+          throw error;
+        }
+      }
+
+      function redirectToHostedDashboard(data) {
+        const target = (data && data.remote_url) || remoteUrl.value.trim();
+        if (!target) return;
+        window.setTimeout(function () {
+          window.location.href = target;
+        }, 1800);
+      }
+
+      powerToggle.addEventListener("change", function () {
+        if (updatingControls) return;
+        postJson("/control", {
+          power_on: powerToggle.checked,
+          compressor_on: compressorToggle.checked
+        }, controlFeedback, "Power command sent.");
+      });
+
+      compressorToggle.addEventListener("change", function () {
+        if (updatingControls) return;
+        postJson("/control", {
+          power_on: powerToggle.checked,
+          compressor_on: compressorToggle.checked
+        }, controlFeedback, "Compressor command sent.");
+      });
+
+      fanSpeed.addEventListener("input", function () {
+        fanSliderValue.textContent = fanSpeed.value + "%";
+      });
+
+      fanApplyButton.addEventListener("click", async function () {
+        setButtonDisabled(fanApplyButton, true);
+        try {
+          await postJson("/fan", { fan_speed_percent: Number(fanSpeed.value) }, fanFeedback, "Fan speed updated.");
+        } finally {
+          setButtonDisabled(fanApplyButton, false);
+        }
+      });
+
+      timerButton.addEventListener("click", async function () {
+        if (!onTime.value || !offTime.value) {
+          setFeedback(timerFeedback, "Select both ON and OFF time.", "error");
+          return;
+        }
+
+        setButtonDisabled(timerButton, true);
+        try {
+          await postJson("/timer", { on_time: onTime.value, off_time: offTime.value }, timerFeedback, "Timer saved.");
+        } finally {
+          setButtonDisabled(timerButton, false);
+        }
+      });
+
+      wifiSaveButton.addEventListener("click", async function () {
+        if (!ssid.value.trim() || !wifiPassword.value || !brokerUrl.value.trim() || !mqttTopic.value.trim()) {
+          setFeedback(wifiFeedback, "Wi-Fi SSID, password, MQTT broker, and topic are required.", "error");
+          return;
+        }
+
+        setButtonDisabled(wifiSaveButton, true);
+        try {
+          await postJson("/save", {
+            ssid: ssid.value.trim(),
+            password: wifiPassword.value,
+            broker_url: brokerUrl.value.trim(),
+            port: brokerPort.value || "8883",
+            topic: mqttTopic.value.trim(),
+            mqtt_user: mqttUser.value.trim(),
+            mqtt_pass: mqttPass.value,
+            remote_url: remoteUrl.value.trim()
+          }, wifiFeedback, "Wi-Fi and MQTT details saved. Connect the device, then you will be redirected to the hosted dashboard.");
+        } finally {
+          setButtonDisabled(wifiSaveButton, false);
+        }
+      });
+
+      wifiConnectButton.addEventListener("click", async function () {
+        setButtonDisabled(wifiConnectButton, true);
+        try {
+          const data = await postJson("/connect", {}, wifiFeedback, "Device is attempting Wi-Fi connection.");
+          if (data && data.message) {
+            setFeedback(wifiFeedback, data.message + (data.remote_url ? " Redirecting to hosted dashboard..." : ""), "success");
+          }
+          redirectToHostedDashboard(data);
+        } finally {
+          setButtonDisabled(wifiConnectButton, false);
+        }
+      });
+
+      startPolling();
+    })();
+  </script>
+</body>
+</html>
+
+
+
